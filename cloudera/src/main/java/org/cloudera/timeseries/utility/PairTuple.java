@@ -1,4 +1,4 @@
-package org.cloudera.utility;
+package org.cloudera.timeseries.utility;
 
 public class PairTuple<T1,T2> {
 	private final T1 firstElement;

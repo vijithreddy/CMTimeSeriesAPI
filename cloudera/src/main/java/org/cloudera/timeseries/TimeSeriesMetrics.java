@@ -1,4 +1,4 @@
-package org.cloudera;
+package org.cloudera.timeseries;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -9,7 +9,7 @@ import java.util.List;
 
 import javax.ws.rs.core.Response;
 
-import org.cloudera.utility.PairTuple;
+import org.cloudera.timeseries.utility.PairTuple;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
