@@ -32,7 +32,7 @@ public class TimeSeriesMetrics {
 			System.err
 					.println("Please use: Hostname Cluster-username Cluster-password tsQuery fromDate(yyyy-MM-dd) toDate(yyyy-MM-dd)");
 		}
-		String hostname = args[0]; // ec2-54-189-132-139.us-west-2.compute.amazonaws.com
+		String hostname = args[0];
 		String username = args[1]; // admin
 		String password = args[2]; // admin
 		String tsQuery = args[3]; // select total_cpu_user where
