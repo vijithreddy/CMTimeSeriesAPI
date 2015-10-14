@@ -47,88 +47,7 @@ public class TimeSeriesMetrics {
 
 		TimeSeriesResourceV6 tv6 = v10.getTimeSeriesResource();
 		List<PairTuple<String, String>> dates = extractDates(fromDate, toDate);
-		for (PairTuple<String, String> eachPair : dates) {
-			// Roll ups can be set to TEN_MINUTELY, HOURLY, SIX_HOURLY, DAILY,
-			// or
-			// WEEKLY.
-			System.out.println("-----------Results for :"
-					+ eachPair.getFirstElement() + " "
-					+ eachPair.getSecondElement() + " ----------");
-			Response response = tv6.queryTimeSeries(tsQuery,
-					eachPair.getFirstElement(), eachPair.getSecondElement(),
-					"application/json", "HOURLY", true);
-			String jsonResponse = response.readEntity(String.class);
-			// To Print the whole response uncomment the following
-			// System.out.println(jsonResponse);
-			JSONParser parser = new JSONParser();
-			Object obj;
-			try {
-				obj = parser.parse(jsonResponse);
-				JSONObject jsonObj = (JSONObject) obj;
-				JSONArray items = (JSONArray) jsonObj.get("items");
-				JSONObject timeSeriesObj = (JSONObject) items.get(0);
-				JSONArray timeSeriesArray = (JSONArray) timeSeriesObj
-						.get("timeSeries");
-				for (Object eachMetadata : timeSeriesArray) {
-					JSONObject metaObj = (JSONObject) eachMetadata;
-					JSONObject metadata = (JSONObject) metaObj.get("metadata");
-					System.out.println("Metric Name: "
-							+ metadata.get("metricName"));
-					System.out.println("EntityName: "
-							+ metadata.get("entityName"));
-					System.out.println("Start Time: "
-							+ metadata.get("startTime"));
-					System.out
-							.println("EntityName: " + metadata.get("endTime"));
-					System.out.println("attributes: "
-							+ metadata.get("attributes"));
-					System.out.println("timeseries Expression: "
-							+ metadata.get("expression"));
-					System.out.println("Rollup Used: "
-							+ metadata.get("rollupUsed"));
-					JSONArray data = (JSONArray) metaObj.get("data");
-					JSONObject peakUsage = null;
-					for (Object eachData : data) {
-
-						JSONObject eachDataObj = (JSONObject) eachData;
-						if (eachDataObj.get("value") instanceof Double) {
-							if (peakUsage != null) {
-								Double peakValue = (Double) peakUsage
-										.get("value");
-								Double eachDataValue = (Double) eachDataObj
-										.get("value");
-								if (eachDataValue > peakValue) {
-									peakUsage = eachDataObj;
-								}
-							} else {
-								peakUsage = (JSONObject) eachData;
-							}
-						}
-
-					}
-					if (peakUsage != null) {
-						System.out
-								.println("-----------Your Peak usage-----------");
-						System.out.println("TimeStamp: "
-								+ peakUsage.get("timestamp"));
-						System.out.println("Peak Value: "
-								+ peakUsage.get("value"));
-						if (peakUsage.get("aggregateStatistics") != null) {
-							System.out.println("Aggregate Stats: "
-									+ peakUsage.get("aggregateStatistics"));
-						}
-					} else {
-						System.out.println("No Values to measure peak usage");
-					}
-
-					System.out.println();
-				}
-
-			} catch (ParseException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
+		calculateMetrics(tsQuery, tv6, dates);
 
 		// ------------------Older Version of Time
 		// series-------------------------
@@ -174,6 +93,94 @@ public class TimeSeriesMetrics {
 		 * System.out.println("\t\t" + role.getName()); } } }
 		 */
 
+	}
+
+	private static void calculateMetrics(String tsQuery,
+			TimeSeriesResourceV6 tv6, List<PairTuple<String, String>> dates) {
+		for (PairTuple<String, String> eachPair : dates) {
+			// Roll ups can be set to TEN_MINUTELY, HOURLY, SIX_HOURLY, DAILY,
+			// or
+			// WEEKLY.
+			System.out.println("-----------Results for :"
+					+ eachPair.getFirstElement() + " "
+					+ eachPair.getSecondElement() + " ----------");
+			Response response = tv6.queryTimeSeries(tsQuery,
+					eachPair.getFirstElement(), eachPair.getSecondElement(),
+					"application/json", "HOURLY", true);
+			String jsonResponse = response.readEntity(String.class);
+			// To Print the whole response uncomment the following
+			// System.out.println(jsonResponse);
+			JSONParser parser = new JSONParser();
+			Object obj;
+			try {
+				obj = parser.parse(jsonResponse);
+				JSONObject jsonObj = (JSONObject) obj;
+				JSONArray items = (JSONArray) jsonObj.get("items");
+				JSONObject timeSeriesObj = (JSONObject) items.get(0);
+				JSONArray timeSeriesArray = (JSONArray) timeSeriesObj
+						.get("timeSeries");
+				for (Object eachMetadata : timeSeriesArray) {
+					JSONObject metaObj = (JSONObject) eachMetadata;
+					JSONObject metadata = (JSONObject) metaObj.get("metadata");
+					System.out.println("Metric Name: "
+							+ metadata.get("metricName"));
+					System.out.println("EntityName: "
+							+ metadata.get("entityName"));
+					System.out.println("Start Time: "
+							+ metadata.get("startTime"));
+					System.out
+							.println("EntityName: " + metadata.get("endTime"));
+					System.out.println("attributes: "
+							+ metadata.get("attributes"));
+					System.out.println("timeseries Expression: "
+							+ metadata.get("expression"));
+					System.out.println("Rollup Used: "
+							+ metadata.get("rollupUsed"));
+					JSONArray data = (JSONArray) metaObj.get("data");
+					JSONObject peakUsage = null;
+					for (Object eachData : data) {
+						peakUsage = calculatePeakUsage(peakUsage, eachData);
+					}
+					if (peakUsage != null) {
+						System.out
+								.println("-----------Your Peak usage-----------");
+						System.out.println("TimeStamp: "
+								+ peakUsage.get("timestamp"));
+						System.out.println("Peak Value: "
+								+ peakUsage.get("value"));
+						if (peakUsage.get("aggregateStatistics") != null) {
+							System.out.println("Aggregate Stats: "
+									+ peakUsage.get("aggregateStatistics"));
+						}
+					} else {
+						System.out.println("No Values to measure peak usage");
+					}
+
+					System.out.println();
+				}
+
+			} catch (ParseException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private static JSONObject calculatePeakUsage(JSONObject peakUsage,
+			Object eachData) {
+		JSONObject eachDataObj = (JSONObject) eachData;
+		if (eachDataObj.get("value") instanceof Double) {
+			if (peakUsage != null) {
+				Double peakValue = (Double) peakUsage.get("value");
+				Double eachDataValue = (Double) eachDataObj.get("value");
+				if (eachDataValue > peakValue) {
+					peakUsage = eachDataObj;
+				}
+			} else {
+				peakUsage = (JSONObject) eachData;
+			}
+		}
+		return peakUsage;
 	}
 
 	private static List<PairTuple<String, String>> extractDates(
