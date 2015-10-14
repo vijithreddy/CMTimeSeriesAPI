@@ -1,8 +1,10 @@
 # CMTimeSeriesAPI
 
-To run this Java program one has to enter the following command line arguments
+To run this Java program one has to enter the following command line arguments:
+
 Hostname Cluster-username Cluster-password tsQuery fromDate(yyyy-MM-dd) toDate(yyyy-MM-dd)
-an example of the arguments can be:
+
+An example of the arguments can be:
 
 ec2-aws.com admin admin "select cpu_percent_across_hosts where category = CLUSTER" 2015-10-10 2015-10-14
 
