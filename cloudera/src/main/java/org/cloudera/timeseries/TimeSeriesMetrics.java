@@ -1,14 +1,25 @@
 package org.cloudera.timeseries;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 import javax.ws.rs.core.Response;
 
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
 import org.cloudera.timeseries.utility.PairTuple;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -28,9 +39,9 @@ public class TimeSeriesMetrics {
 	// final static ByteArrayOutputStream out=new ByteArrayOutputStream();
 	public static void main(String[] args) {
 
-		if (args.length != 6) {
+		if (args.length != 7) {
 			System.err
-					.println("Please use: Hostname Cluster-username Cluster-password tsQuery fromDate(yyyy-MM-dd) toDate(yyyy-MM-dd)");
+					.println("Please use: Hostname Cluster-username Cluster-password tsQuery fromDate(yyyy-MM-dd) toDate(yyyy-MM-dd) output-file-location");
 		}
 		String hostname = args[0];
 		String username = args[1]; // admin
@@ -39,7 +50,7 @@ public class TimeSeriesMetrics {
 									// serviceType=IMPALA
 		String fromDate = args[4];
 		String toDate = args[5];
-
+		String location = args[6];
 		ApiRootResource root = new ClouderaManagerClientBuilder()
 				.withHost(hostname).withUsernamePassword(username, password)
 				.build();
@@ -47,7 +58,7 @@ public class TimeSeriesMetrics {
 
 		TimeSeriesResourceV6 tv6 = v10.getTimeSeriesResource();
 		List<PairTuple<String, String>> dates = extractDates(fromDate, toDate);
-		calculateMetrics(tsQuery, tv6, dates);
+		calculateMetrics(tsQuery, tv6, dates, location);
 
 		// ------------------Older Version of Time
 		// series-------------------------
@@ -96,8 +107,30 @@ public class TimeSeriesMetrics {
 	}
 
 	private static void calculateMetrics(String tsQuery,
-			TimeSeriesResourceV6 tv6, List<PairTuple<String, String>> dates) {
+			TimeSeriesResourceV6 tv6, List<PairTuple<String, String>> dates,
+			String location) {
+		int index = 2;
+		HSSFWorkbook workbook = new HSSFWorkbook();
+		HSSFSheet sheet = workbook.createSheet("timeseries metrics");
+		Map<Integer, Object[]> sheetData = new TreeMap<Integer, Object[]>();
+		sheetData.put(1, new Object[] { "From Date", "To Date", "Metric Name",
+				"Entity Name", "Start Time", "End Time", "attributes",
+				"timeseries Expression", "Rollup used", "Peak TimeStamp",
+				"Peak Value", "Aggregate Stats" });
 		for (PairTuple<String, String> eachPair : dates) {
+			String fromDate = "";
+			String toDate = "";
+			String metricName = "";
+			String entityName = "";
+			String startTime = "";
+			String endTime = "";
+			String attributes = "";
+			String timeSeriesExpr = "";
+			String rollup = "";
+			String peakTimeStamp = "";
+			Double peakValue = null;
+			String aggregateStats = "";
+
 			// Roll ups can be set to TEN_MINUTELY, HOURLY, SIX_HOURLY, DAILY,
 			// or
 			// WEEKLY.
@@ -107,6 +140,8 @@ public class TimeSeriesMetrics {
 			Response response = tv6.queryTimeSeries(tsQuery,
 					eachPair.getFirstElement(), eachPair.getSecondElement(),
 					"application/json", "HOURLY", true);
+			fromDate = eachPair.getFirstElement();
+			toDate = eachPair.getSecondElement();
 			String jsonResponse = response.readEntity(String.class);
 			// To Print the whole response uncomment the following
 			// System.out.println(jsonResponse);
@@ -119,23 +154,30 @@ public class TimeSeriesMetrics {
 				JSONObject timeSeriesObj = (JSONObject) items.get(0);
 				JSONArray timeSeriesArray = (JSONArray) timeSeriesObj
 						.get("timeSeries");
+
 				for (Object eachMetadata : timeSeriesArray) {
 					JSONObject metaObj = (JSONObject) eachMetadata;
 					JSONObject metadata = (JSONObject) metaObj.get("metadata");
 					System.out.println("Metric Name: "
 							+ metadata.get("metricName"));
+					metricName = metadata.get("metricName").toString();
 					System.out.println("EntityName: "
 							+ metadata.get("entityName"));
+					entityName = metadata.get("entityName").toString();
 					System.out.println("Start Time: "
 							+ metadata.get("startTime"));
-					System.out
-							.println("EntityName: " + metadata.get("endTime"));
+					startTime = metadata.get("startTime").toString();
+					System.out.println("End Time: " + metadata.get("endTime"));
+					endTime = metadata.get("endTime").toString();
 					System.out.println("attributes: "
 							+ metadata.get("attributes"));
+					attributes = metadata.get("attributes").toString();
 					System.out.println("timeseries Expression: "
 							+ metadata.get("expression"));
+					timeSeriesExpr = metadata.get("expression").toString();
 					System.out.println("Rollup Used: "
 							+ metadata.get("rollupUsed"));
+					rollup = metadata.get("rollupUsed").toString();
 					JSONArray data = (JSONArray) metaObj.get("data");
 					JSONObject peakUsage = null;
 					for (Object eachData : data) {
@@ -146,15 +188,26 @@ public class TimeSeriesMetrics {
 								.println("-----------Your Peak usage-----------");
 						System.out.println("TimeStamp: "
 								+ peakUsage.get("timestamp"));
+						peakTimeStamp = peakUsage.get("timestamp").toString();
 						System.out.println("Peak Value: "
 								+ peakUsage.get("value"));
+						peakValue = (Double) peakUsage.get("value");
 						if (peakUsage.get("aggregateStatistics") != null) {
 							System.out.println("Aggregate Stats: "
 									+ peakUsage.get("aggregateStatistics"));
+							aggregateStats = peakUsage.get(
+									"aggregateStatistics").toString();
 						}
 					} else {
 						System.out.println("No Values to measure peak usage");
 					}
+
+					sheetData.put(index, new Object[] { fromDate, toDate,
+							metricName, entityName, startTime, endTime,
+							attributes, timeSeriesExpr, rollup, peakTimeStamp,
+							peakValue, aggregateStats });
+
+					index++;
 
 					System.out.println();
 				}
@@ -163,6 +216,41 @@ public class TimeSeriesMetrics {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+
+		}
+		saveExcel(location, workbook, sheet, sheetData);
+	}
+
+	private static void saveExcel(String location, HSSFWorkbook workbook,
+			HSSFSheet sheet, Map<Integer, Object[]> sheetData) {
+		Set<Integer> keyset = sheetData.keySet();
+		int rownum = 0;
+		for (Integer key : keyset) {
+			Row row = sheet.createRow(rownum++);
+			Object[] objArr = sheetData.get(key);
+			int cellnum = 0;
+			for (Object obj : objArr) {
+				Cell cell = row.createCell(cellnum++);
+				if (obj instanceof Date)
+					cell.setCellValue((Date) obj);
+				else if (obj instanceof Boolean)
+					cell.setCellValue((Boolean) obj);
+				else if (obj instanceof String)
+					cell.setCellValue((String) obj);
+				else if (obj instanceof Double)
+					cell.setCellValue((Double) obj);
+			}
+		}
+		try {
+			FileOutputStream out = new FileOutputStream(new File(location));
+			workbook.write(out);
+			out.close();
+			System.out.println("Excel written successfully..");
+
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
