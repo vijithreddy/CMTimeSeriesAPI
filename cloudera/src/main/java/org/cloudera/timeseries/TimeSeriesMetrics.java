@@ -32,7 +32,7 @@ import com.cloudera.api.v10.RootResourceV10;
 import com.cloudera.api.v6.TimeSeriesResourceV6;
 
 /**
- * 
+ * @author vijith.reddy
  *
  */
 public class TimeSeriesMetrics {
@@ -106,6 +106,13 @@ public class TimeSeriesMetrics {
 
 	}
 
+	/**
+	 * Calculates the metrics (peakvalue) with the given TSQuery
+	 * @param tsQuery  Time series query (refer timeseries query language: {@link http://www.cloudera.com/content/www/en-us/documentation/enterprise/latest/topics/cm_dg_tsquery.html}  )
+	 * @param tv6 TimeSeriesResourceV6 object
+	 * @param dates A list of pair objects, Obj[String,String] with fromDate, toDate
+	 * @param location File location to save the excel file
+	 */
 	private static void calculateMetrics(String tsQuery,
 			TimeSeriesResourceV6 tv6, List<PairTuple<String, String>> dates,
 			String location) {
@@ -221,6 +228,13 @@ public class TimeSeriesMetrics {
 		saveExcel(location, workbook, sheet, sheetData);
 	}
 
+	/**
+	 * This method is to save the output metrics into an Excel sheet
+	 * @param location Location in the file system where the excel file has to be saved
+	 * @param workbook workbook object
+	 * @param sheet Sheet object
+	 * @param sheetData The data to be saved in the excel
+	 */
 	private static void saveExcel(String location, HSSFWorkbook workbook,
 			HSSFSheet sheet, Map<Integer, Object[]> sheetData) {
 		Set<Integer> keyset = sheetData.keySet();
@@ -254,6 +268,12 @@ public class TimeSeriesMetrics {
 		}
 	}
 
+	/**
+	 * This method compares two json objects and returns the highest Json object with the highest value 
+	 * @param peakUsage Json object with a double value
+	 * @param eachData Object object with a double value
+	 * @return peakUsage Json object with peak value
+	 */
 	private static JSONObject calculatePeakUsage(JSONObject peakUsage,
 			Object eachData) {
 		JSONObject eachDataObj = (JSONObject) eachData;
@@ -271,6 +291,12 @@ public class TimeSeriesMetrics {
 		return peakUsage;
 	}
 
+	/**
+	 * This method will return a list of fromDate and toDate with 1 day intervals. That is if the parameters specified to this method are 2015-10-12 2015-10-14, the returned tuples will be t1[2015-10-12,2015-10-13], t2[2015-10-13,2015-10-14]
+	 * @param fromDate start date in String with (yyyy-MM-dd) fromat
+	 * @param toDate end date in String with (yyyy-MM-dd) fromat
+	 * @return list of Pair Tuples (PairTuple{String,String})
+	 */
 	private static List<PairTuple<String, String>> extractDates(
 			String fromDate, String toDate) {
 		Calendar cal1 = new GregorianCalendar();
@@ -300,7 +326,13 @@ public class TimeSeriesMetrics {
 		return dailyTimes;
 	}
 
-	public static int daysBetween(Date d1, Date d2) {
-		return (int) ((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+	/**
+	 * This method calculates the number of days between two dates
+	 * @param day1 from date 
+	 * @param day2 to date
+	 * @return The number of days
+	 */
+	public static int daysBetween(Date day1, Date day2) {
+		return (int) ((day2.getTime() - day1.getTime()) / (1000 * 60 * 60 * 24));
 	}
 }
